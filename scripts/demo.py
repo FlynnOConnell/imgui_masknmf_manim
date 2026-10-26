@@ -1,12 +1,9 @@
 """
-The README's demo: the real window in a hidden GL context, on a fixed 30 fps clock, driven by a scripted cursor that
-sends real mouse events. Each frame is read back from the framebuffer and piped to ffmpeg, losslessly, then encoded as
-docs/demo.mp4 (H.264) and docs/demo.gif. Needs a desktop session for the GL context, and ffmpeg.
+A tour of the whole window, for the README: the real window in a hidden GL context, on a fixed 30 fps clock, driven
+by a scripted cursor that sends real mouse events. Each frame is read back from the framebuffer and piped to ffmpeg,
+losslessly, then encoded as docs/demo.mp4 (H.264). Needs a desktop session for the GL context, and ffmpeg.
 
     python scripts/demo.py
-
-The movie playing inside the panels changes much of every frame, which a GIF stores badly (40 MB at 1280 px). So the
-GIF is a second recording with the movie paused on its busiest frame, scaled to the width GitHub shows a README at.
 
 The tour: the Overview story plays; a click on a cell in the background panel moves every trace to that pixel; the
 Compression page plays; then the Residual page. About 45 s.
@@ -84,15 +81,12 @@ def second_cell(signal: np.ndarray, pixel: tuple, radius: float = 12.0) -> tuple
 class Recorder(App):
     """The window on a fixed clock: it draws with manim on the main thread, follows TOUR, and pipes every frame out."""
 
-    def __init__(self, settings: Settings, ffmpeg: subprocess.Popen, movie_still: bool = False):
+    def __init__(self, settings: Settings, ffmpeg: subprocess.Popen):
         super().__init__(settings=settings, scale=1.0, page="overview")
         self.load(self.future_compute.result())
         self.future_compute = None
         self.prepared = True  # nothing builds on the manim thread: this class draws on the main one
         self.playing = False
-        if movie_still:
-            self.movie_playing = False
-            self.frame_clock = float(np.argmax(self.d.signal.reshape(self.d.n_frames, -1).std(axis=1)))
         self.ffmpeg = ffmpeg
         self.target_pixel = second_cell(self.d.signal, self.pixel)
         self.n_drawn = 0
@@ -186,14 +180,14 @@ class Recorder(App):
         self.ffmpeg.stdin.write(read_framebuffer(width, height).tobytes())
 
 
-def record(filepath_lossless: Path, movie_still: bool = False) -> int:
+def record(filepath_lossless: Path) -> int:
     """Run the tour into a lossless FFV1 file; returns the frames written."""
     ffmpeg = subprocess.Popen(
         ["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgba", "-s", f"{SIZE[0]}x{SIZE[1]}",
          "-r", str(FPS), "-i", "-", "-c:v", "ffv1", "-pix_fmt", "bgr0", str(filepath_lossless)],
         stdin=subprocess.PIPE,
     )
-    app = Recorder(settings=Settings(), ffmpeg=ffmpeg, movie_still=movie_still)
+    app = Recorder(settings=Settings(), ffmpeg=ffmpeg)
     params = runner_params(app, hidden=True)
     params.app_window_params.window_geometry.size = SIZE
     params.fps_idling.enable_idling = False
@@ -213,37 +207,19 @@ def encode_mp4(filepath_lossless: Path, filepath_mp4: Path, crf: int) -> None:
                     "-movflags", "+faststart", str(filepath_mp4)], check=True)
 
 
-def encode_gif(filepath_lossless: Path, filepath_gif: Path, fps: int, width: int) -> None:
-    """
-    One palette from every pixel of the movie, so the window's rarer colors (the green status) keep their hue, and
-    ordered dithering, so still areas stay still from frame to frame.
-    """
-    graph = (f"fps={fps},scale={width}:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=256:stats_mode=full[p];"
-             "[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle")
-    subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(filepath_lossless), "-vf", graph,
-                    str(filepath_gif)], check=True)
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     parser.add_argument("--crf", type=int, default=20, help="the mp4's x264 quality: lower is better and bigger")
-    parser.add_argument("--gif-fps", type=int, default=15)
-    parser.add_argument("--gif-width", type=int, default=1000)
-    parser.add_argument("--gif-movie", action="store_true", help="keep the movie playing in the GIF too (much bigger)")
     args = parser.parse_args()
     style.setup_manim()
     immvision.use_rgb_color_order()
     with tempfile.TemporaryDirectory() as dir_tmp:
         filepath_lossless = Path(dir_tmp) / "tour.mkv"
         n_frames = record(filepath_lossless)
-        encode_mp4(filepath_lossless, REPO / "docs" / "demo.mp4", args.crf)
-        if not args.gif_movie:
-            record(filepath_lossless, movie_still=True)
-        encode_gif(filepath_lossless, REPO / "docs" / "demo.gif", args.gif_fps, args.gif_width)
-    for name in ("demo.mp4", "demo.gif"):
-        filepath = REPO / "docs" / name
-        print(f"{filepath}: {filepath.stat().st_size / 1e6:.1f} MB")
-    print(f"{n_frames} frames, {n_frames / FPS:.1f} s at {FPS} fps, {SIZE[0]} x {SIZE[1]}")
+        filepath_mp4 = REPO / "docs" / "demo.mp4"
+        encode_mp4(filepath_lossless, filepath_mp4, args.crf)
+    print(f"{filepath_mp4}: {filepath_mp4.stat().st_size / 1e6:.1f} MB, {n_frames} frames, {n_frames / FPS:.1f} s at "
+          f"{FPS} fps, {SIZE[0]} x {SIZE[1]}")
 
 
 if __name__ == "__main__":

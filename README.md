@@ -14,10 +14,11 @@ The window is styled like [imgui_lab4_interface](https://github.com/FlynnOConnel
 imgui-data-loader's shell, the same palette, Font Awesome icons. The movie, registration and compression come from
 imgui_masknmf's own steps, which call masknmf.
 
-![A tour of the window: the Overview story, a click that follows a new pixel, then the Compression and Residual pages](docs/demo.gif)
+![The Overview animation: the registered movie splits into background, signal and residual, then one pixel's four traces](docs/overview.gif)
 
-The GIF holds the movie on one frame to stay small. [docs/demo.mp4](docs/demo.mp4) is the same tour at 1280 x 920
-with the movie playing in the panels.
+That is the Overview page's animation, drawn by manim from imgui_masknmf's simulated movie. [docs/demo.mp4](docs/demo.mp4)
+is a 45 s tour of the whole window: the Overview, a click that follows another pixel, then the Compression and
+Residual pages.
 
 ## The three pieces
 
@@ -88,10 +89,12 @@ The same as imgui_masknmf: its simulated movie by default, or `imgui-masknmf-man
 ```bash
 pytest                          # 28 tests, about 25 s; one opens a hidden window
 python scripts/screenshot.py    # docs/<page>.png
-python scripts/demo.py          # docs/demo.mp4 and docs/demo.gif, about 2 min; needs ffmpeg
+python scripts/overview_gif.py  # docs/overview.gif, about 20 s; needs ffmpeg
+python scripts/demo.py          # docs/demo.mp4, about 70 s
 imgui-masknmf-manim --page residual --time 5 --screenshot residual.png
 ```
 
+`scripts/overview_gif.py` draws the Overview story through manim's camera alone and crops to what it covers.
 `scripts/demo.py` records the real window. It runs hidden on a fixed 30 fps clock, a scripted cursor sends imgui real
 mouse events, and each frame is read back from the framebuffer and piped to ffmpeg.
 
@@ -105,6 +108,7 @@ mouse events, and each frame is read back from the framebuffer and piped to ffmp
 | `src/imgui_masknmf_manim/style.py` | the palette, colormaps, and the font manim shares with the window |
 | `src/imgui_masknmf_manim/app.py` | the window |
 | `scripts/screenshot.py` | the page screenshots in `docs/` |
-| `scripts/demo.py` | `docs/demo.mp4` and `docs/demo.gif` |
+| `scripts/overview_gif.py` | `docs/overview.gif` |
+| `scripts/demo.py` | `docs/demo.mp4` |
 
 See [ARCHITECTURE.md](ARCHITECTURE.md).
