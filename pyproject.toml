@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "imgui_masknmf_manim"
+version = "0.1.0"
+description = "An imgui-bundle window that explains, with manim, how masknmf splits a movie into background, compressed signal and residual."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Flynn OConnell", email = "flynnoconnell@gmail.com" }]
+keywords = ["imgui", "imgui-bundle", "manim", "masknmf", "pmd", "calcium-imaging", "voltage-imaging"]
+dependencies = [
+    "imgui-bundle==1.92.801",
+    "imgui-data-loader>=0.2.0",
+    "manim>=0.22",
+    # manim 0.22.0 can't draw an ImageMobject with pillow 13 (fixed on manim's main in #5074, not yet released)
+    "pillow<13",
+    "matplotlib",
+    "numpy>=1.23",
+    "torch",
+    "masknmf",
+    "imgui_masknmf",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+imgui-masknmf-manim = "imgui_masknmf_manim.app:run"
+
+[tool.uv.sources]
+masknmf = { path = "../masknmf-toolbox", editable = true }
+imgui_masknmf = { path = "../imgui_masknmf", editable = true }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]  # test the source, never an installed copy
